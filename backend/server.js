@@ -6,6 +6,8 @@ const connectDB = require('./config/db');
 // Mount Route files
 const userRoutes = require('./routes/userRoutes');
 const problemRoutes = require('./routes/problemRoutes');
+const submissionRoutes = require('./routes/submissionRoutes');
+
 // Load env vars
 dotenv.config();
 
@@ -22,6 +24,7 @@ app.use(cors());
 //Mount Routes
 app.use('/api/users', userRoutes);
 app.use('/api/problems', problemRoutes);
+app.use('/api/submissions', submissionRoutes);
 
 // Basic Route
 app.get('/', (req, res) => {

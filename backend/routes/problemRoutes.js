@@ -2,11 +2,12 @@
 const express = require('express');
 const router = express.Router();
 const { getProblems, getProblemById, createProblem } = require('../controllers/problemController');
+const { protect, admin } = require('../middleware/authMiddleware');
 
-// Route to get all problems or create one
-router.route('/').get(getProblems).post(createProblem);
+// Public: Get all. Private/Admin: Create new.
+router.route('/').get(getProblems).post(protect, admin, createProblem);
 
-// Route to get a specific problem
+// Public: Get one.
 router.route('/:id').get(getProblemById);
 
 module.exports = router;
