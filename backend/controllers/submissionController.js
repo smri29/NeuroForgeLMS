@@ -1,6 +1,7 @@
 // backend/controllers/submissionController.js
 const Submission = require('../models/submissionModel');
-const axios = require('axios'); // <--- Import Axios
+const Problem = require('../models/problemModel'); // <--- Import Problem Model
+const axios = require('axios');
 
 // @desc    Submit code for evaluation
 // @route   POST /api/submissions
@@ -9,38 +10,42 @@ const submitCode = async (req, res) => {
   try {
     const { problemId, code, language } = req.body;
 
-    // 1. Call the Python AI Service
+    // 1. Fetch the Problem to get Test Cases
+    const problem = await Problem.findById(problemId);
+    if (!problem) {
+      return res.status(404).json({ message: 'Problem not found' });
+    }
+
+    // 2. Call the Python AI Service with Code AND Test Cases
     let executionResult;
     try {
-      // connecting to the port 8000 where FastAPI is running
       const pythonResponse = await axios.post('http://localhost:8000/execute', {
         code: code,
-        problem_id: problemId
+        test_cases: problem.testCases // <--- Sending the tests from DB
       });
       executionResult = pythonResponse.data;
       
     } catch (pyError) {
       console.error("Python Service Error:", pyError.message);
-      // Fallback if Python is down
       executionResult = { 
-        status: 'error', 
-        output: 'Error: AI Service unreachable. Please ensure the Python server is running.' 
+        passed: false,
+        results: 'Error: AI Service unreachable. Please ensure the Python server is running.' 
       };
     }
 
-    // 2. Create the Submission Record
+    // 3. Create the Submission Record
     const submission = await Submission.create({
       user: req.user._id,
       problem: problemId,
       code,
       language,
-      status: 'Pending', // We will update this with real logic later
+      status: executionResult.passed ? 'Accepted' : 'Wrong Answer', // <--- Real Status
     });
 
-    // 3. Send back the saved submission + The Python Output
+    // 4. Send back the saved submission + The Detailed Python Output
     res.status(201).json({
       ...submission._doc,
-      output: executionResult.output // <--- The simulated output from Python
+      output: executionResult.results // <--- Detailed logs from Python
     });
 
   } catch (error) {
