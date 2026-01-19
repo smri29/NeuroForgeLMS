@@ -1,11 +1,13 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import ProblemDetail from './pages/ProblemDetail';
 import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
+import Problems from './pages/Problems';
+import ProblemDetail from './pages/ProblemDetail';
+import AIInterview from './pages/AIInterview';
+import Profile from './pages/Profile';
 import { useAuth } from './hooks/useAuth';
 
-// A wrapper to protect routes (Dashboard shouldn't be public)
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const { user, loading } = useAuth();
   
@@ -18,11 +20,11 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* --- Public Routes ( accessible without login ) --- */}
+        {/* Public Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* --- Protected Routes ( require login ) --- */}
+        {/* Protected Routes */}
         <Route 
           path="/dashboard" 
           element={
@@ -32,13 +34,44 @@ function App() {
           } 
         />
         
-        <Route
-          path="/problems/:id"
+        {/* Problem Set (List View) */}
+        <Route 
+          path="/problems" 
+          element={
+            <ProtectedRoute>
+              <Problems />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Single Problem (Detail View) */}
+        <Route 
+          path="/problems/:id" 
           element={
             <ProtectedRoute>
               <ProblemDetail />
             </ProtectedRoute>
-          }
+          } 
+        />
+
+        {/* AI Interview (Placeholder) */}
+        <Route 
+          path="/interview" 
+          element={
+            <ProtectedRoute>
+              <AIInterview />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Profile (Placeholder) */}
+        <Route 
+          path="/profile" 
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          } 
         />
 
         {/* Redirect unknown routes to login */}
