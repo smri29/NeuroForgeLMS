@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import ProblemDetail from './pages/ProblemDetail';
 import { useAuth } from './hooks/useAuth';
 
 // A wrapper to protect routes (Dashboard shouldn't be public)
@@ -27,6 +28,14 @@ function App() {
               <Dashboard />
             </ProtectedRoute>
           } 
+        />
+        <Route
+          path="/problems/:id"
+          element={
+            <ProtectedRoute>
+              <ProblemDetail />
+            </ProtectedRoute>
+          }
         />
 
         {/* Redirect unknown routes to login */}
