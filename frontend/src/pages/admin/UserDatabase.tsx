@@ -1,9 +1,22 @@
 // src/pages/admin/UserDatabase.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import AdminLayout from '../../components/layout/AdminLayout';
-import { Search, MoreVertical, Shield, User, Mail, Ban, CheckCircle, Download, Loader2 } from 'lucide-react';
+import { 
+  Search, 
+  MoreVertical, 
+  Shield, 
+  User, 
+  Mail, 
+  Ban, 
+  CheckCircle, 
+  Download, 
+  Loader2, 
+  Trash2,
+  ShieldAlert,
+  Unlock
+} from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import api from '../../services/api'; // Import API
+import api from '../../services/api';
 import toast from 'react-hot-toast';
 
 interface UserData {
@@ -11,6 +24,7 @@ interface UserData {
   name: string;
   email: string;
   role: string;
+  status?: string; // Optional field for now
   createdAt: string;
 }
 
@@ -18,6 +32,19 @@ const UserDatabase = () => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeMenu, setActiveMenu] = useState<string | null>(null); // Track open menu
+
+  // Close menu when clicking outside
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setActiveMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     fetchUsers();
@@ -26,11 +53,69 @@ const UserDatabase = () => {
   const fetchUsers = async () => {
     try {
       const { data } = await api.get('/users');
-      setUsers(data);
+      // Ensure status exists (default to Active if missing from DB)
+      const processedData = data.map((u: UserData) => ({
+        ...u,
+        status: u.status || 'Active' 
+      }));
+      setUsers(processedData);
     } catch (error) {
       toast.error('Failed to load users');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // --- ACTION HANDLERS ---
+
+  const handleRoleToggle = async (user: UserData) => {
+    const newRole = user.role === 'admin' ? 'candidate' : 'admin';
+    setActiveMenu(null); // Close menu immediately
+
+    try {
+      // 1. Call API
+      await api.put(`/users/${user._id}/role`, { role: newRole });
+      
+      // 2. Update UI (Success)
+      setUsers(users.map(u => u._id === user._id ? { ...u, role: newRole } : u));
+      toast.success(`User role updated to ${newRole}`);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to update role");
+    }
+  };
+
+  const handleStatusToggle = async (user: UserData) => {
+    const newStatus = user.status === 'Active' ? 'Suspended' : 'Active';
+    setActiveMenu(null);
+
+    try {
+      // 1. Call API
+      await api.put(`/users/${user._id}/status`, { status: newStatus });
+
+      // 2. Update UI (Success)
+      setUsers(users.map(u => u._id === user._id ? { ...u, status: newStatus } : u));
+      toast.success(newStatus === 'Active' ? 'User activated' : 'User suspended');
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to update status");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if(!window.confirm("Are you sure? This cannot be undone.")) return;
+    setActiveMenu(null);
+
+    try {
+      // 1. Call API
+      await api.delete(`/users/${id}`);
+
+      // 2. Update UI (Success)
+      setUsers(users.filter(u => u._id !== id));
+      toast.success('User permanently removed');
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete user");
     }
   };
 
@@ -51,7 +136,7 @@ const UserDatabase = () => {
         </Button>
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-visible"> {/* overflow-visible for dropdowns */}
         {/* Toolbar */}
         <div className="p-4 border-b border-slate-800 flex gap-4">
           <div className="relative flex-1 max-w-md">
@@ -67,7 +152,7 @@ const UserDatabase = () => {
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto min-h-[400px]">
           <table className="w-full text-left text-sm text-slate-400">
             <thead className="bg-slate-950 text-slate-200 uppercase font-bold text-xs">
               <tr>
@@ -94,7 +179,7 @@ const UserDatabase = () => {
                  </tr>
               ) : (
                 filteredUsers.map((user) => (
-                  <tr key={user._id} className="hover:bg-slate-800/50 transition-colors">
+                  <tr key={user._id} className="hover:bg-slate-800/50 transition-colors group relative">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-white font-bold border border-slate-700">
@@ -119,17 +204,69 @@ const UserDatabase = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-emerald-400 flex items-center gap-1.5 text-xs font-medium bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 w-fit">
-                        <CheckCircle className="w-3 h-3" /> Active
-                      </span>
+                      {user.status === 'Active' ? (
+                        <span className="text-emerald-400 flex items-center gap-1.5 text-xs font-medium bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 w-fit">
+                          <CheckCircle className="w-3 h-3" /> Active
+                        </span>
+                      ) : (
+                        <span className="text-rose-400 flex items-center gap-1.5 text-xs font-medium bg-rose-500/10 px-2 py-1 rounded border border-rose-500/20 w-fit">
+                          <Ban className="w-3 h-3" /> Suspended
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 font-mono text-xs">
                         {new Date(user.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors">
+                    
+                    {/* --- ACTIONS COLUMN --- */}
+                    <td className="px-6 py-4 text-right relative">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenu(activeMenu === user._id ? null : user._id);
+                        }}
+                        className={`p-2 rounded-lg transition-colors ${activeMenu === user._id ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                      >
                         <MoreVertical className="w-4 h-4" />
                       </button>
+
+                      {/* Dropdown Menu */}
+                      {activeMenu === user._id && (
+                        <div 
+                          ref={menuRef}
+                          className="absolute right-8 top-8 z-50 w-48 bg-slate-950 border border-slate-800 rounded-lg shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100"
+                        >
+                          <div className="px-3 py-2 text-xs font-bold text-slate-500 uppercase border-b border-slate-800 mb-1">
+                            User Actions
+                          </div>
+                          
+                          <button 
+                            onClick={() => handleRoleToggle(user)}
+                            className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2 transition-colors"
+                          >
+                            {user.role === 'admin' ? <User className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4 text-yellow-500" />}
+                            {user.role === 'admin' ? 'Demote to User' : 'Promote to Admin'}
+                          </button>
+
+                          <button 
+                            onClick={() => handleStatusToggle(user)}
+                            className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2 transition-colors"
+                          >
+                            {user.status === 'Active' ? <Ban className="w-4 h-4 text-orange-500" /> : <Unlock className="w-4 h-4 text-emerald-500" />}
+                            {user.status === 'Active' ? 'Suspend Access' : 'Reactivate User'}
+                          </button>
+
+                          <div className="my-1 border-t border-slate-800" />
+
+                          <button 
+                            onClick={() => handleDelete(user._id)}
+                            className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-950/30 hover:text-red-300 flex items-center gap-2 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Remove User
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))

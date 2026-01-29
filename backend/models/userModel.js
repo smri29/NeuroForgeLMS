@@ -22,7 +22,13 @@ const userSchema = mongoose.Schema(
       enum: ['candidate', 'admin'],
       default: 'candidate',
     },
-    // The "Knowledge Graph" Scores
+    // NEW FIELD: Status (Active, Suspended, Banned)
+    status: {
+      type: String,
+      enum: ['Active', 'Suspended', 'Banned'],
+      default: 'Active',
+    },
+    // Knowledge Graph Scores
     skills_profile: {
       python: { type: Number, default: 0 },
       math: { type: Number, default: 0 },
@@ -34,9 +40,11 @@ const userSchema = mongoose.Schema(
       enum: ['free', 'pro'],
       default: 'free',
     },
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
   },
   {
-    timestamps: true, // Automatically creates 'createdAt' and 'updatedAt'
+    timestamps: true,
   }
 );
 

@@ -79,13 +79,9 @@ const forgotPassword = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Generate a simple token (In production, save a hashed version to DB)
     const resetToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    
-    // Create Reset URL
     const resetUrl = `http://localhost:5173/reset-password/${user._id}/${resetToken}`;
 
-    // Create Email Message (HTML)
     const message = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
         <h2 style="color: #7c3aed;">PyForge Password Reset</h2>
@@ -97,7 +93,6 @@ const forgotPassword = async (req, res) => {
       </div>
     `;
 
-    // Send Email via Nodemailer
     await sendEmail({
       email: user.email,
       subject: 'PyForge Password Reset Token',
@@ -124,7 +119,6 @@ const resetPassword = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Update password
     user.password = password;
     await user.save();
 
@@ -140,10 +134,66 @@ const resetPassword = async (req, res) => {
 // @access  Private/Admin
 const getUsers = async (req, res) => {
   try {
-    const users = await User.find({});
+    const users = await User.find({}).sort({ createdAt: -1 });
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// @desc    Update user role
+// @route   PUT /api/users/:id/role
+// @access  Private/Admin
+const updateUserRole = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (user) {
+      user.role = req.body.role; // 'admin' or 'candidate'
+      const updatedUser = await user.save();
+      res.json(updatedUser);
+    } else {
+      res.status(404);
+      throw new Error('User not found');
+    }
+  } catch (error) {
+    res.status(400).json({ message: 'Update failed' });
+  }
+};
+
+// @desc    Update user status
+// @route   PUT /api/users/:id/status
+// @access  Private/Admin
+const updateUserStatus = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (user) {
+      user.status = req.body.status; // 'Active' or 'Suspended'
+      const updatedUser = await user.save();
+      res.json(updatedUser);
+    } else {
+      res.status(404);
+      throw new Error('User not found');
+    }
+  } catch (error) {
+    res.status(400).json({ message: 'Update failed' });
+  }
+};
+
+// @desc    Delete user
+// @route   DELETE /api/users/:id
+// @access  Private/Admin
+const deleteUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (user) {
+      await user.deleteOne();
+      res.json({ message: 'User removed' });
+    } else {
+      res.status(404);
+      throw new Error('User not found');
+    }
+  } catch (error) {
+    res.status(400).json({ message: 'Delete failed' });
   }
 };
 
@@ -153,4 +203,7 @@ module.exports = {
   forgotPassword,
   resetPassword,
   getUsers,
+  updateUserRole,
+  updateUserStatus,
+  deleteUser
 };
