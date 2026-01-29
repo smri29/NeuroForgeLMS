@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import api from '../../services/api';
 import { ShieldAlert, Lock, Terminal } from 'lucide-react';
-import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -17,21 +17,26 @@ const AdminLogin = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
     try {
-      await login(email, password);
-      // We will handle the redirect logic inside useAuth or here manually
-      // But first, let's verify if they are actually an admin
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-          const user = JSON.parse(userStr);
-          if (user.role !== 'admin') {
-              toast.error("ACCESS DENIED: Insufficient Privileges");
-              return;
-          }
-          navigate('/admin'); // Direct to Command Center
+      // 1. Verify Credentials & Role via API first
+      const { data } = await api.post('/users/login', { email, password });
+      
+      if (data.role !== 'admin') {
+         toast.error("ACCESS DENIED: Insufficient Privileges");
+         setLoading(false);
+         return;
       }
-    } catch (error) {
-      toast.error('System Access Failed');
+
+      // 2. Update Auth State
+      login(data);
+      
+      // 3. ADMIN REDIRECT (Explicit)
+      toast.success("Welcome, Commander.");
+      navigate('/admin');
+
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'System Access Failed');
     } finally {
       setLoading(false);
     }
@@ -41,27 +46,21 @@ const AdminLogin = () => {
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 font-mono">
       <Toaster position="top-center" />
       
-      {/* Matrix-like Background Effect */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-10">
          <div className="absolute top-0 left-1/4 w-px h-full bg-red-500/50"></div>
          <div className="absolute top-0 right-1/4 w-px h-full bg-red-500/50"></div>
-         <div className="absolute top-1/3 left-0 w-full h-px bg-red-500/50"></div>
-         <div className="absolute bottom-1/3 left-0 w-full h-px bg-red-500/50"></div>
       </div>
 
       <div className="w-full max-w-md relative z-10">
         <div className="bg-slate-900 border border-red-900/30 rounded-xl shadow-2xl overflow-hidden">
           
-          {/* Header */}
           <div className="bg-red-950/20 p-6 border-b border-red-900/20 flex flex-col items-center">
-            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 border border-red-500/20 animate-pulse">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 border border-red-500/20">
               <ShieldAlert className="w-8 h-8 text-red-500" />
             </div>
             <h1 className="text-xl font-bold text-red-100 tracking-widest uppercase">Restricted Area</h1>
-            <p className="text-xs text-red-400 mt-1">PyForge Core Systems</p>
           </div>
 
-          {/* Form */}
           <div className="p-8 space-y-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -102,12 +101,6 @@ const AdminLogin = () => {
                 AUTHENTICATE
               </Button>
             </form>
-          </div>
-          
-          <div className="p-4 bg-slate-950 border-t border-slate-800 text-center">
-            <p className="text-[10px] text-slate-600">
-              UNAUTHORIZED ACCESS IS PROHIBITED. <br/>ALL IP ADDRESSES ARE LOGGED.
-            </p>
           </div>
         </div>
       </div>

@@ -5,29 +5,39 @@ const User = require('../models/userModel');
 const protect = async (req, res, next) => {
   let token;
 
-  // Check if header starts with "Bearer"
   if (
     req.headers.authorization &&
     req.headers.authorization.startsWith('Bearer')
   ) {
     try {
-      // Get token from header (Format: "Bearer <token>")
+      // 1. Get token from header
       token = req.headers.authorization.split(' ')[1];
 
-      // Decode token
+      // 2. Safety Check: If token is missing or "null" string (Common frontend issue)
+      if (!token || token === 'null' || token === 'undefined') {
+        res.status(401);
+        throw new Error('Not authorized, no token');
+      }
+
+      // 3. Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Get user from database (exclude password) and attach to req
-      req.user = await User.findById(decoded.userId).select('-password');
+      // 4. Get user from the token
+      // Note: We check decoded.id (standard) OR decoded.userId (alternative) to be safe
+      req.user = await User.findById(decoded.id || decoded.userId).select('-password');
 
-      next(); // Move to the next middleware/controller
+      if (!req.user) {
+        res.status(401);
+        throw new Error('Not authorized, user not found');
+      }
+
+      next();
     } catch (error) {
-      console.error(error);
+      console.error(`Auth Error: ${error.message}`);
+      // Send 401 Unauthorized instead of crashing
       res.status(401).json({ message: 'Not authorized, token failed' });
     }
-  }
-
-  if (!token) {
+  } else {
     res.status(401).json({ message: 'Not authorized, no token' });
   }
 };

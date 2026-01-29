@@ -1,7 +1,7 @@
 // backend/controllers/userController.js
 const User = require('../models/userModel');
 const generateToken = require('../utils/generateToken');
-const sendEmail = require('../utils/sendEmail'); // <--- Import Email Utility
+const sendEmail = require('../utils/sendEmail'); 
 
 // @desc    Register a new user
 // @route   POST /api/users
@@ -135,9 +135,22 @@ const resetPassword = async (req, res) => {
   }
 };
 
+// @desc    Get all users
+// @route   GET /api/users
+// @access  Private/Admin
+const getUsers = async (req, res) => {
+  try {
+    const users = await User.find({});
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
 module.exports = {
   registerUser,
   authUser,
   forgotPassword,
   resetPassword,
+  getUsers,
 };

@@ -1,8 +1,8 @@
 // src/context/AuthContext.tsx
-import { createContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
 import api from '../services/api';
 
-// Define the shape of a User
+// Define User Shape
 interface User {
   _id: string;
   name: string;
@@ -14,19 +14,19 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (userData: User) => void;
+  login: (userData: User) => void; // Login now just updates state
   logout: () => void;
 }
 
-export const AuthContext = createContext<AuthContextType | null>(null);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already logged in (from localStorage)
-    const storedUser = localStorage.getItem('neuroforge_user');
+    // Check for token on load
+    const storedUser = localStorage.getItem('user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
@@ -34,16 +34,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = (userData: User) => {
-    localStorage.setItem('neuroforge_token', userData.token);
-    localStorage.setItem('neuroforge_user', JSON.stringify(userData));
+    // 1. Save to Storage
+    localStorage.setItem('user', JSON.stringify(userData));
+    // 2. Update State
     setUser(userData);
+    // ❌ REMOVED: navigate('/dashboard'); 
+    // We now let the Component decide where to redirect!
   };
 
   const logout = () => {
-    localStorage.removeItem('neuroforge_token');
-    localStorage.removeItem('neuroforge_user');
+    localStorage.removeItem('user');
     setUser(null);
-    window.location.href = '/login'; // Hard redirect to clear state
+    // Optional: You can keep window.location.href here if you want a hard reset
+    window.location.href = '/login';
   };
 
   return (

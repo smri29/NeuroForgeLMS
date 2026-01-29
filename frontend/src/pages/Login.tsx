@@ -20,13 +20,22 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      // Call Backend
+      // 1. Call Backend
       const { data } = await api.post('/users/login', { email, password });
       
-      // Save Token & Redirect
+      // 2. Save Token (Global State)
       login(data);
+      
       toast.success('Welcome back!');
-      navigate('/dashboard'); 
+
+      // 3. SMART REDIRECT LOGIC
+      if (data.role === 'admin') {
+          console.log("👑 Admin detected. Redirecting to Command Center...");
+          navigate('/admin'); // <--- Send Admins here
+      } else {
+          console.log("🎓 Student detected. Redirecting to Dashboard...");
+          navigate('/dashboard'); // <--- Send Students here
+      }
       
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Login failed');
